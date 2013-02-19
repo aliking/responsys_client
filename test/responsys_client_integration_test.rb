@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'responsys_client'
 
-class ResponsysClientIntegrationTest < Test::Unit::TestCase 
+class ResponsysClientIntegrationTest < Test::Unit::TestCase
   FOLDER_NAME = "Test_Gem"
   CAMPAIGN_NAME = "GemCampaignEmail"
   CAMPAIGN_TRANSACTION_NAME = "GemTransactionalEmail"
@@ -73,52 +73,71 @@ class ResponsysClientIntegrationTest < Test::Unit::TestCase
     def test_save_supplemental_table_with_pk
       rando = rand(100)
       member = {
-        'JPJ_1' => "I am a donkey",
-        'JPJ_2' => "But I love you #{rando}"
+          'JPJ_1' => "I am a donkey",
+          'JPJ_2' => "But I love you #{rando}"
       }
       response = @client.save_supplemental_table_with_pk(FOLDER_NAME, 'gem_jpj', [member])
       result = response.result
       assert_equal 1, result.totalCount
       assert_equal '', result.errorMessage
     end
-    
+
     # This assumes you have a Profile Extension Table (PET) called gem_fire in the Test_Gem folder.
     # This also assumes that RIID_ is the match column for Test_Gem. The value for RIID_ should 
     # be incordance to that of in the corresponding Profile List for Test_Gem. 
     # JPJ_1 Text Field
     # JPJ_2 Text Field
     def test_save_profile_extension_table
-      member = { 
-        'JPJ_2' => "James Bond",
-        'JPJ_1' => "007",
-        'RIID_' => "511793"
-      }   
-      response = @client.save_profile_extension_table(FOLDER_NAME, 'gem_fire', [member], 'RIID' ) 
+      member = {
+          'JPJ_2' => "James Bond",
+          'JPJ_1' => "007",
+          'RIID_' => "511793"
+      }
+      response = @client.save_profile_extension_table(FOLDER_NAME, 'gem_fire', [member], 'RIID')
       result = response.recipientResult
-      response.each{ |res| assert_equal '', res.errorMessage }
-    end 
+      response.each { |res| assert_equal '', res.errorMessage }
+    end
+
+    # This assumes you have a Profile Extension Table (PET) called gem_fire in the Test_Gem folder.
+    # This also assumes that RIID_ is the match column for Test_Gem. The value for RIID_ should
+    # be incordance to that of in the corresponding Profile List for Test_Gem.
+    # JPJ_1 Text Field
+    # JPJ_2 Text Field
+    def test_get_profile_extension_table
+      field_list = ['JPJ_1', 'JPJ_2']
+      response = @client.get_profile_extension_table(FOLDER_NAME, 'gem_fire', field_list, '511793', 'RIID')
+      result = response.recipientResult
+      response.each { |res| assert_equal '', res.errorMessage }
+
+      result.should == {
+          'JPJ_2' => "James Bond",
+          'JPJ_1' => "007",
+          'RIID_' => "511793"
+      }
+
+    end
 
     def test_too_many_members_error_suplemental_table
       members = 202.times.map do |i|
         {
-          'JPJ_1' => "#{i}",
-          'JPJ_2' => "James #{i}"
-        }   
-      end 
-      assert_raise SunDawg::Responsys::ResponsysClient::TooManyMembersError do 
+            'JPJ_1' => "#{i}",
+            'JPJ_2' => "James #{i}"
+        }
+      end
+      assert_raise SunDawg::Responsys::ResponsysClient::TooManyMembersError do
         response = @client.save_supplemental_table_with_pk(FOLDER_NAME, 'gem_jpj', members)
       end
-    end 
-  
+    end
+
     def test_too_many_members_error_profile_extension_table
       members = 202.times.map do |i|
         {
-          'RIID' => '7418814',
-          'JPJ_2' => "James #{i}",
-          'JPJ_1' => "#{i}"
+            'RIID' => '7418814',
+            'JPJ_2' => "James #{i}",
+            'JPJ_1' => "#{i}"
         }
       end
-      assert_raise SunDawg::Responsys::ResponsysClient::TooManyMembersError do  
+      assert_raise SunDawg::Responsys::ResponsysClient::TooManyMembersError do
         response = @client.save_profile_extension_table(FOLDER_NAME, 'gem_fire', members, 'RIID')
       end
     end
@@ -130,12 +149,12 @@ class ResponsysClientIntegrationTest < Test::Unit::TestCase
       SunDawg::Responsys::Member.add_field :city, true
       SunDawg::Responsys::Member.add_field :state, true
       member = SunDawg::Responsys::Member.new
-      member.customer_id = Time.now.to_i 
+      member.customer_id = Time.now.to_i
       member.email_address = "sundawg.#{Time.now.to_i}@sundawg.net"
       member.email_permission_status = "I"
       member.city = "San Francisco"
       member.state = "CA"
-      response = @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+      response = @client.save_members FOLDER_NAME, LIST_NAME, [member]
       assert response.result
     end
 
@@ -146,7 +165,7 @@ class ResponsysClientIntegrationTest < Test::Unit::TestCase
       SunDawg::Responsys::Member.add_field :city, true
       SunDawg::Responsys::Member.add_field :state, true
       member = SunDawg::Responsys::Member.new
-      member.customer_id = Time.now.to_i 
+      member.customer_id = Time.now.to_i
       member.email_address = "lol.cats.sundawg.#{Time.now.to_i}@sundawg.net"
       member.email_permission_status = SunDawg::Responsys::PermissionStatus::OPTIN
       member.city = "San Francisco"
@@ -165,7 +184,7 @@ class ResponsysClientIntegrationTest < Test::Unit::TestCase
       SunDawg::Responsys::Member.add_field :state, true
 
       member = SunDawg::Responsys::Member.new
-      member.customer_id = Time.now.to_i 
+      member.customer_id = Time.now.to_i
       member.email_address = "sundawg-montgomery@sundawg.net"
       member.email_permission_status = SunDawg::Responsys::PermissionStatus::OPTIN
       member.city = "Montgomery"
@@ -174,34 +193,34 @@ class ResponsysClientIntegrationTest < Test::Unit::TestCase
       # When the keep_alive option has not been set (default) then the client 
       # must reconnect for every request or a FaultError will be raised on 
       # multiple requests
-      response = @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+      response = @client.save_members FOLDER_NAME, LIST_NAME, [member]
       assert response.result
       error = assert_raise SOAP::FaultError do
-        @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+        @client.save_members FOLDER_NAME, LIST_NAME, [member]
       end
 
       # When the keep_alive option has been set then the client does not need
       # to reconnect for every request
       @client = SunDawg::Responsys::ResponsysClient.new(@username, @password, :keep_alive => true)
-      response = @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+      response = @client.save_members FOLDER_NAME, LIST_NAME, [member]
       assert response.result
-      response = @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+      response = @client.save_members FOLDER_NAME, LIST_NAME, [member]
       assert response.result
 
       # When the keep_alive option has not been set (default) then the client 
       # does not need to reconnect for every request if keep_alive is set
       @client = SunDawg::Responsys::ResponsysClient.new(@username, @password)
       @client.keep_alive = true
-      response = @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+      response = @client.save_members FOLDER_NAME, LIST_NAME, [member]
       assert response.result
-      response = @client.save_members FOLDER_NAME, LIST_NAME, [member] 
+      response = @client.save_members FOLDER_NAME, LIST_NAME, [member]
       assert response.result
     end
 
     def test_launch_campaign
       begin
         response = @client.launch_campaign FOLDER_NAME, CAMPAIGN_NAME
-        assert response.result 
+        assert response.result
       rescue SunDawg::Responsys::CampaignFault => e
         # Responsys does not allow campaigns to be launched less than 15 minute attempts
         assert_equal "Launch attempt failed: A campaign cannot be launched more than once per 15 minutes.", e.exception_message
@@ -210,19 +229,19 @@ class ResponsysClientIntegrationTest < Test::Unit::TestCase
 
     def test_trigger_campaign_with_optional_data
       response = @client.trigger_campaign(
-        FOLDER_NAME, 
-        CAMPAIGN_TRANSACTION_NAME, 
-        EMAIL,
-        {:name => "Fred"}
+          FOLDER_NAME,
+          CAMPAIGN_TRANSACTION_NAME,
+          EMAIL,
+          {:name => "Fred"}
       )
       assert response.first.success
     end
 
     def test_trigger_campaign_without_optional_data
       response = @client.trigger_campaign(
-        FOLDER_NAME,
-        CAMPAIGN_TRANSACTION_NAME,
-        EMAIL
+          FOLDER_NAME,
+          CAMPAIGN_TRANSACTION_NAME,
+          EMAIL
       )
       assert response.first.success
     end
