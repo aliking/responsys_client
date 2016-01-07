@@ -1,0 +1,19 @@
+PATH
+  remote: .
+  specs:
+    sundawg_responsys_client (0.0.1)
+      soap4r-ruby1.9 (~> 2.0.5)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    soap4r-ruby1.9 (2.0.5)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  sundawg_responsys_client!
+
+BUNDLED WITH
+   1.10.6

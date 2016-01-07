@@ -1,6 +1,5 @@
 require 'rubygems'
 require 'member'
-gem 'soap4r'
 require 'stub/defaultDriver.rb'
 require 'stub/defaultMappingRegistry.rb'
 
@@ -10,12 +9,15 @@ module SunDawg
 
       MAX_MEMBERS = 200
 
+      class InvalidParams < StandardError
+        def initialize(message)
+          super(message.to_s)
+        end
+      end
       class TooManyMembersError < StandardError
       end
-
       class ResponsysTimeoutError < StandardError
       end
-
       class MethodsNotSupportedError < StandardError
       end
 
@@ -24,11 +26,12 @@ module SunDawg
 
         def initialize record_data
           @field_names = record_data.fieldNames
-          @records =[]
-          record_iterator = record_data.records.respond_to?(:fieldValues) ? record_data.records.fieldValues : record_data.records[0]
-          record_iterator.each do |column|
-            @records << Array(column.map)
-          end
+          @records     = if record_data.records.respond_to?(:fieldValues)
+                           record_data.records.fieldValues
+                         else
+                           record_data.records[0]
+                         end
+
           @to_hash = Hash[@field_names.zip(@records)]
 
         end
@@ -61,7 +64,7 @@ module SunDawg
       # <options...> - Hash of additional options
       #   :keep_alive => true|false - (Default=false) Keep session alive for multiple requests
       #   :timeout_threshold => Seconds (Default=180) Length of time to timeout a request
-      #   :wiredump_dev => IO - Dump all messages (reply and responses) to IO 
+      #   :wiredump_dev => IO - Dump all messages (reply and responses) to IO
       #
       def initialize(username, password, options = {})
         @username = username
@@ -279,6 +282,82 @@ module SunDawg
         with_session do
           @responsys_client.triggerCampaignMessage trigger_campaign_message
         end
+      end
+
+      ####
+        ##  users_data = [
+        ##                 {:email => 'abc@animoto.com', :user_options => {:foo => :bar}},
+        ##                 {:email => 'xyz@animoto.com', :user_options => {:foo => :bar}}
+        ##               ]
+        ##
+        ##  response = [
+        ##                #<SunDawg::Responsys::TriggerResult:0x11169c8e8 @errorMessage="", @recipientId=14640439, @success=true>,
+        ##                #<SunDawg::Responsys::TriggerResult:0x11169c8e8 @errorMessage="MULTIPLE_RECIPIENTS_FOUND", @recipientId=-2, @success=false>
+        ##              ]
+      ####
+      def trigger_custom_program(users_data, folder_name, list_name, event_name = nil, event_id = nil)
+        nil_param =  if (event_name.nil? && event_id.nil?)
+                        "both event_name & event_id"
+                      elsif list_name.nil?
+                        "list_name"
+                      elsif folder_name.nil?
+                        "folder_name"
+                      end
+        if nil_param
+          raise  InvalidParams.new("Error:#{nil_param} cannot be nil")
+        end
+
+        list_object = InteractObject.new
+        list_object.folderName = folder_name
+        list_object.objectName = list_name
+
+        custom_event = CustomEvent.new
+        custom_event.eventName = event_name if event_name
+        custom_event.eventId = event_id if event_id
+
+        custom_event.recipients = []
+        custom_event.optionalData = []
+        recipientData = []
+
+        # loop for each user
+        users_data.each do |user_info|
+          if user_info[:email].nil? && user_info[:id].nil?
+            raise
+          end
+
+          recipient_options = user_info[:user_options] || {}
+          # Responsys requires something in the optional data for SOAP bindings to work
+          recipient_options[:foo] = :bar if recipient_options.empty?
+
+          recipient = Recipient.new
+          recipient.emailAddress = user_info[:email] if user_info[:email]
+          recipient.customerId = user_info[:id] if user_info[:id]
+          recipient.listName = list_object
+          recipient_data = RecipientData.new
+          recipient_data.recipient = recipient
+          recipient_data.optionalData = []
+          custom_event.recipients << recipient
+
+          recipient_options.each_pair do |k, v|
+            optional_data = OptionalData.new
+            optional_data.name = k
+            v.gsub!(/[[:cntrl:]]/, ' ') if v.is_a? String
+            optional_data.value = v
+            recipient_data.optionalData << optional_data
+            custom_event.optionalData << optional_data
+          end
+
+          recipientData << recipient_data
+        end
+
+        trigger_custom_event = TriggerCustomEvent.new
+        trigger_custom_event.recipientData = recipientData
+        trigger_custom_event.customEvent = custom_event
+
+        with_session do
+          @responsys_client.triggerCustomEvent trigger_custom_event
+        end
+
       end
 
       def with_timeout
